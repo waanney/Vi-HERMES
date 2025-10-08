@@ -1,0 +1,93 @@
+version: "3.9"
+
+services:
+  # ---------------- Neo4j ----------------
+  neo4j:
+    image: neo4j:5.21
+    container_name: neo4j-local
+    restart: unless-stopped
+    ports:
+      - "7474:7474"   # Web UI
+      - "7687:7687"   # Bolt (drivers)
+    environment:
+      - NEO4J_AUTH=neo4j/password123
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_server_memory_heap_initial__size=512m
+      - NEO4J_server_memory_heap_max__size=1G
+      - NEO4J_server_memory_pagecache_size=512m
+    volumes:
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+      - ./neo4j/import:/var/lib/neo4j/import
+      - ./neo4j/plugins:/plugins
+
+  # ---------------- etcd (metadata cho Milvus) ----------------
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.12
+    container_name: etcd
+    restart: unless-stopped
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER=etcd=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_NAME=etcd
+    ports:
+      - "2379:2379"
+    volumes:
+      - ./etcd/data:/etcd-data
+    command: >
+      /usr/local/bin/etcd
+      --data-dir=/etcd-data
+      --wal-dir=/etcd-wal
+
+  # ---------------- MinIO (S3 cho Milvus) ----------------
+  minio:
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
+    container_name: minio
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+      - MINIO_REGION_NAME=us-east-1
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    volumes:
+      - ./minio/data:/data
+
+  # ---------------- Milvus (standalone) ----------------
+  milvus:
+    image: milvusdb/milvus:v2.4.3
+    container_name: milvus-standalone-2
+    restart: unless-stopped
+    depends_on:
+      - etcd
+      - minio
+    environment:
+      # etcd (metadata)
+      - ETCD_ENDPOINTS=etcd:2379
+      # MinIO (S3 storage)
+      - MINIO_ADDRESS=minio:9000
+      - MINIO_USE_SSL=false
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      # - MINIO_BUCKET_NAME=milvus-bucket   # (tuỳ chọn) nếu muốn cố định bucket
+      # Log level
+      - MILVUS_LOG_LEVEL=info
+    command: ["milvus", "run", "standalone"]
+    ports:
+      - "19530:19530" # gRPC
+      - "9091:9091"   # REST
+    volumes:
+      - ./milvus/data:/var/lib/milvus
+      # - ./milvus/config/milvus.yaml:/etc/milvus/milvus.yaml:ro  # (tuỳ chọn)
+
+# (tuỳ chọn) networks/volumes riêng, mặc định docker compose đã tạo network bridge chung.
