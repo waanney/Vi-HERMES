@@ -2273,3 +2273,6 @@
 2025-10-08 15:53:34.177+0000 INFO  [o.n.g.f.DatabaseManagementServiceFactory] id: 19117F3AF7C82FBCC8BD885179837966AF6070796166BCD0719986B18B11418E
 2025-10-08 15:53:34.177+0000 INFO  [o.n.g.f.DatabaseManagementServiceFactory] name: system
 2025-10-08 15:53:34.178+0000 INFO  [o.n.g.f.DatabaseManagementServiceFactory] creationDate: 2025-10-08T06:53:11.672Z
+2025-10-08 16:15:03.157+0000 INFO  [o.n.k.i.t.l.c.CheckPointerImpl] [neo4j/af103998] Checkpoint triggered by "Scheduled checkpoint for every 15 minutes threshold" @ txId: 67 checkpoint started...
+2025-10-08 16:15:03.186+0000 INFO  [o.n.k.i.t.l.c.CheckPointerImpl] [neo4j/af103998] Checkpoint triggered by "Scheduled checkpoint for every 15 minutes threshold" @ txId: 67 checkpoint completed in 27ms. Checkpoint flushed 64 pages (0% of total available pages), in 64 IOs. Checkpoint performed with IO limit: unlimited, paused in total 0 times( 0 millis).
+2025-10-08 16:15:03.188+0000 INFO  [o.n.k.i.t.l.p.LogPruningImpl] [neo4j/af103998] No log version pruned. The strategy used was '2 days 2147483648 size'. 
