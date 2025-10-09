@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/uraxlaw/lawgraph/neo4j_db/__init__.py">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/uraxlaw/lawgraph/neo4j_db/__init__.py" />
+              <option name="updatedContent" value="&quot;&quot;&quot;Neo4j query package for lawgraph.&#10;&#10;Re-exports Cypher query constants defined in queries.py so consumers can do:&#10;    from uraxlaw.lawgraph.neo4j_db import SCHEMA_CYPHER, INGEST_CYPHER, SEARCH_TOP_ARTICLES, ...&#10;&quot;&quot;&quot;&#10;from .queries import (&#10;    SCHEMA_CYPHER,&#10;    INGEST_CYPHER,&#10;    GET_ARTICLE_CONTENT,&#10;    GET_MODIFIERS,&#10;    SEARCH_TOP_ARTICLES,&#10;    SEARCH_ALL_NODES,&#10;    NODE_CONTEXT,&#10;    STRUCTURED_LAW_QUERY,&#10;    STRUCTURED_ARTICLE_QUERY,&#10;    STRUCTURED_CLAUSE_QUERY,&#10;)&#10;&#10;__all__ = [&#10;    &quot;SCHEMA_CYPHER&quot;,&#10;    &quot;INGEST_CYPHER&quot;,&#10;    &quot;GET_ARTICLE_CONTENT&quot;,&#10;    &quot;GET_MODIFIERS&quot;,&#10;    &quot;SEARCH_TOP_ARTICLES&quot;,&#10;    &quot;SEARCH_ALL_NODES&quot;,&#10;    &quot;NODE_CONTEXT&quot;,&#10;    &quot;STRUCTURED_LAW_QUERY&quot;,&#10;    &quot;STRUCTURED_ARTICLE_QUERY&quot;,&#10;    &quot;STRUCTURED_CLAUSE_QUERY&quot;,&#10;]&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
