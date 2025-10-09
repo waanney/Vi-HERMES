@@ -23,21 +23,21 @@ Run:
 """
 from __future__ import annotations
 from typing import List, Optional, Dict, Any, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import argparse
 import os
 import json
 import re
 import unicodedata
 from datetime import datetime
-from dateutil.parser import parse as parse_date
 
-from pydantic import BaseModel, Field, field_validator
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
+
+from .models import Relation, Clause, Point, Article, LawSchema, QuerySlots
 
 load_dotenv()
 
@@ -179,156 +179,11 @@ def extract_query_slots(question: str) -> QuerySlots:
     return slots
 # =======================e
 # 0) Pydantic models: Schema with date normalization
+# (moved to uraxlaw.lawgraph.models)
 # ========================
-class Relation(BaseModel):
-    type: str  # MODIFIES | ADDS | REPEALS | REPLACES | REFERS_TO | DEFINES
-    source: str
-    target: str
-    effective_date: Optional[str] = None  # ISO yyyy-mm-dd
-    expiry_date: Optional[str] = None
-    description: Optional[str] = None
-
-    @field_validator("effective_date", "expiry_date")
-    def _norm_date(cls, v):
-        if not v:
-            return None
-        try:
-            return parse_date(v, dayfirst=True).date().isoformat()
-        except Exception:
-            return v
-
-class Clause(BaseModel):
-    clause_number: int
-    content: str
-    effective_date: Optional[str] = None
-    expiry_date: Optional[str] = None
-    relations: List[Relation] = Field(default_factory=list)
-    points: List["Point"] = Field(default_factory=list)
-
-    @field_validator("effective_date", "expiry_date")
-    def _norm_date(cls, v):
-        if not v:
-            return None
-        try:
-            return parse_date(v, dayfirst=True).date().isoformat()
-        except Exception:
-            return v
+# (Removed in-file model definitions; imported above.)
 
 
-class Point(BaseModel):
-    point_symbol: str  # Điểm a, b, c...
-    content: str
-    effective_date: Optional[str] = None
-    expiry_date: Optional[str] = None
-    relations: List[Relation] = Field(default_factory=list)
-
-    @field_validator("effective_date", "expiry_date")
-    def _norm_date(cls, v):
-        if not v:
-            return None
-        try:
-            return parse_date(v, dayfirst=True).date().isoformat()
-        except Exception:
-            return v
-
-
-Clause.model_rebuild()
-Point.model_rebuild()
-
-class Article(BaseModel):
-    article_number: int
-    title: Optional[str] = None
-    content: Optional[str] = None
-    effective_date: Optional[str] = None
-    expiry_date: Optional[str] = None
-    clauses: List[Clause] = Field(default_factory=list)
-
-    @field_validator("effective_date", "expiry_date")
-    def _norm_date(cls, v):
-        if not v:
-            return None
-        try:
-            return parse_date(v, dayfirst=True).date().isoformat()
-        except Exception:
-            return v
-
-class LawSchema(BaseModel):
-    law_name: str
-    law_id: Optional[str] = None
-    document_type: Optional[str] = None  # Luật, Nghị định, Thông tư...
-    issued_by: Optional[str] = None
-    signer: Optional[str] = None
-    issued_date: Optional[str] = None
-    promulgation_date: Optional[str] = None
-    effective_date: Optional[str] = None
-    expiry_date: Optional[str] = None
-    scope: Optional[str] = None  # Phạm vi điều chỉnh
-    language: str = "vi"
-    aliases: List[str] = Field(default_factory=list)
-    modified_by: List[str] = Field(default_factory=list)
-    articles: List[Article] = Field(default_factory=list)
-
-    @field_validator("issued_date", "promulgation_date", "effective_date", "expiry_date")
-    def _norm_date(cls, v):
-        if not v:
-            return None
-        try:
-            return parse_date(v, dayfirst=True).date().isoformat()
-        except Exception:
-            return v
-
-
-@dataclass
-class QuerySlots:
-    law_ids: List[str] = field(default_factory=list)
-    law_names: List[str] = field(default_factory=list)
-    article_numbers: List[int] = field(default_factory=list)
-    clause_numbers: List[int] = field(default_factory=list)
-    as_of: Optional[str] = None
-    rel_types: List[str] = field(default_factory=list)
-    keywords: List[str] = field(default_factory=list)
-    open_text: str = ""
-    is_ambiguous: bool = False
-
-# ========================
-# 1) PydanticAI Agent: Extract JSON from legal text
-# ========================
-SYSTEM_INSTRUCTIONS = (
-    "You are a structured information extraction assistant for Vietnamese legal texts. "
-    "Task: read a Vietnamese law or regulation and emit JSON that conforms to the provided LawSchema. "
-    "Requirements:\n"
-    "- Identify law_name, law_id (e.g. 13/2008/QH12 or 123/2020/NĐ-CP), document_type (Law/Decree/etc.), issued_by, signer, issued_date, promulgation_date, effective_date, expiry_date, scope, and aliases when available.\n"
-    "- Keep all textual content in Vietnamese exactly as written; do not translate or paraphrase.\n"
-    "- Set the language field to 'vi'.\n"
-    "- Split the document into Articles (article_number, title, content).\n"
-    "- Within each Article, split Clauses (clause_number, content).\n"
-    "- If a Clause contains Points, list each point_symbol and content in order.\n"
-    "- Detect legal relations: modify/add/repeal/replace/reference/define (type=MODIFIES|ADDS|REPEALS|REPLACES|REFERS_TO|DEFINES).\n"
-    "- For every relation, provide source (originating document or provision), target (target article/clause/law), and effective_date/expiry_date when present.\n"
-    "- Normalize any recognizable dates to yyyy-mm-dd.\n"
-    "- When uncertain, return null. Output valid JSON only with no explanations."
-)
-
-# Configure ChatGPT/OpenAI model
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-model = OpenAIChatModel(model_name=OPENAI_MODEL,provider=OpenAIProvider(api_key=OPENAI_API_KEY))
-
-# Create agent with structured output type
-extract_agent = Agent(
-    model=model,
-    output_type=LawSchema,
-    system_prompt=SYSTEM_INSTRUCTIONS
-)
-
-async def extract_schema(text: str) -> LawSchema:
-    """Call the PydanticAI agent to get a validated LawSchema."""
-    run = await extract_agent.run(text)
-    return run.output  # already validated LawSchema
-
-# ========================
-# 2) Neo4j ingestion
-# ========================
 @dataclass
 class Neo4jConfig:
     uri: str
