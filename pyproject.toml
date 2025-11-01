@@ -25,6 +25,7 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-ai>=1.0.15",
     "pydantic-core>=2.16",
+    "pymilvus>=2.6.3",
     "typing-extensions==4.12.2",
 ]
 
