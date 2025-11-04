@@ -1,7 +1,8 @@
-import sys
 import random
+from types import SimpleNamespace
+from typing import Callable, Dict, List, Optional
 from pymilvus import (
-    MilvusClient,
+    MilvusClient as PyMilvusClient,
     CollectionSchema,
     FieldSchema,
     DataType
@@ -41,7 +42,7 @@ class MilvusSchemaManager:
         """
         print(f"Connecting to Milvus at {self.milvus_uri}...")
         try:
-            self.client = MilvusClient(uri=self.milvus_uri)
+            self.client = PyMilvusClient(uri=self.milvus_uri)
             print("Milvus connection successful.")
             return True
         except Exception as e:
@@ -63,17 +64,36 @@ class MilvusSchemaManager:
         """(Internal) Defines the schema structure."""
         print("Defining schema...")
         fields = [
-            FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, auto_id=False, max_length=256),
-            FieldSchema(name="original_doc_id", dtype=DataType.VARCHAR, max_length=256),
+            # Primary key
+            FieldSchema(name="article_id", dtype=DataType.VARCHAR, is_primary=True, auto_id=False, max_length=64),
+            
+            # Document identifiers
+            FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=64),
+            FieldSchema(name="doc_type", dtype=DataType.VARCHAR, max_length=20),
+            
+            # Article/Clause structure
+            FieldSchema(name="article_number", dtype=DataType.INT64),
+            FieldSchema(name="clause_number", dtype=DataType.VARCHAR, max_length=10),
+            
+            # Content
             FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
-            FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=64),
-            FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024),
-            FieldSchema(name="dense_vec", dtype=DataType.FLOAT_VECTOR, dim=self.dense_dim),
-            FieldSchema(name="sparse_vec", dtype=DataType.SPARSE_FLOAT_VECTOR)
+            FieldSchema(name="title", dtype=DataType.VARCHAR, max_length=255),
+            
+            # Vector embeddings
+            FieldSchema(name="dense_vector", dtype=DataType.FLOAT_VECTOR, dim=self.dense_dim),
+            FieldSchema(name="sparse_vector", dtype=DataType.SPARSE_FLOAT_VECTOR),
+            
+            # Metadata
+            FieldSchema(name="year", dtype=DataType.INT64),
+            FieldSchema(name="agency", dtype=DataType.VARCHAR, max_length=255),
+            FieldSchema(name="status", dtype=DataType.VARCHAR, max_length=20),
+            FieldSchema(name="effective_date", dtype=DataType.VARCHAR, max_length=20),  # ISO date string
+            FieldSchema(name="source_url", dtype=DataType.VARCHAR, max_length=255),
+            FieldSchema(name="last_update", dtype=DataType.INT64),  # Unix timestamp
         ]
         return CollectionSchema(
             fields=fields,
-            description="Schema for the Graph RAG system",
+            description="Schema for Vietnamese legal documents with article-level chunking",
             enable_dynamic_field=False
         )
 
@@ -84,10 +104,10 @@ class MilvusSchemaManager:
             return
 
         # 1. Create Index for Dense Vector
-        print("Creating index for 'dense_vec' field...")
+        print("Creating index for 'dense_vector' field...")
         dense_index_params = self.client.prepare_index_params()
         dense_index_params.add_index(
-            field_name="dense_vec",
+            field_name="dense_vector",
             index_type="HNSW",
             metric_type="COSINE",
             params={"M": 16, "efConstruction": 256}
@@ -96,13 +116,13 @@ class MilvusSchemaManager:
             collection_name=self.collection_name,
             index_params=dense_index_params
         )
-        print("Successfully created 'dense_vec' index (HNSW, COSINE).")
+        print("Successfully created 'dense_vector' index (HNSW, COSINE).")
 
         # 2. Create index for Sparse Vector
-        print("Creating index for 'sparse_vec' field...")
+        print("Creating index for 'sparse_vector' field...")
         sparse_index_params = self.client.prepare_index_params()
         sparse_index_params.add_index(
-            field_name="sparse_vec",
+            field_name="sparse_vector",
             index_type="SPARSE_INVERTED_INDEX", 
             metric_type="IP", 
             params={"drop_ratio_build": 0.1}
@@ -111,7 +131,33 @@ class MilvusSchemaManager:
             collection_name=self.collection_name,
             index_params=sparse_index_params
         )
-        print("Successfully created 'sparse_vec' index (SPARSE_INVERTED_INDEX, IP).")
+        print("Successfully created 'sparse_vector' index (SPARSE_INVERTED_INDEX, IP).")
+        
+        # 3. Create scalar indexes for numeric fields only
+        # Note: STL_SORT only supports numeric fields (INT64, FLOAT, etc.)
+        # VARCHAR fields (doc_id, doc_type, status) don't need indexes for filtering
+        print("Creating scalar indexes for numeric fields...")
+        numeric_indexes = [
+            ("article_number", "article_number_idx"),
+            ("year", "year_idx"),
+        ]
+        for field_name, index_name in numeric_indexes:
+            try:
+                scalar_index_params = self.client.prepare_index_params()
+                scalar_index_params.add_index(
+                    field_name=field_name,
+                    index_type="STL_SORT"
+                )
+                self.client.create_index(
+                    collection_name=self.collection_name,
+                    index_params=scalar_index_params
+                )
+                print(f"Successfully created scalar index '{index_name}' for '{field_name}'.")
+            except Exception as e:
+                print(f"Warning: Could not create index for '{field_name}': {e}")
+        
+        # Note: VARCHAR fields (doc_id, doc_type, status) can be filtered without indexes
+        # If needed, you can use MARISA trie index for VARCHAR fields, but it's optional
 
     def recreate_collection(self):
         """
@@ -175,10 +221,18 @@ class MilvusSchemaManager:
         if not self.client:
             print("ERROR: Client is not connected. Cannot flush.")
             return
-            
         print("Flushing collection...")
-        self.client.flush_collection(collection_name=self.collection_name)
-        print("Flush complete. Data is now searchable.")
+        try:
+            # Newer PyMilvus MilvusClient exposes `flush`
+            if hasattr(self.client, "flush"):
+                self.client.flush(collection_name=self.collection_name)
+            else:
+                # Many operations are auto-flushed; proceed without hard flush
+                print("flush() not available; skipping explicit flush.")
+        except Exception as e:
+            print(f"Flush not supported or failed: {e}. Continuing.")
+        else:
+            print("Flush complete. Data is now searchable.")
 
     def search(self, dense_query_vector, sparse_query_vector, limit=5, output_fields=None):
         """
@@ -198,17 +252,17 @@ class MilvusSchemaManager:
             return []
 
         if output_fields is None:
-            output_fields = ["id", "text", "source", "url"]
+            output_fields = ["article_id", "doc_id", "text", "title", "doc_type", "article_number", "clause_number"]
 
         req_dense = {
             "data": [dense_query_vector],
-            "anns_field": "dense_vec",
+            "anns_field": "dense_vector",
             "param": {"metric_type": "COSINE", "params": {"ef": 128}},
             "limit": limit
         }
         req_sparse = {
             "data": [sparse_query_vector],
-            "anns_field": "sparse_vec",
+            "anns_field": "sparse_vector",
             "param": {"metric_type": "IP"},
             "limit": limit
         }
@@ -231,12 +285,12 @@ class MilvusSchemaManager:
             return []
 
     # --- PHƯƠNG THỨC MỚI ---
-    def delete_by_original_doc_id(self, original_doc_id):
+    def delete_by_doc_id(self, doc_id):
         """
-        Deletes all entities (chunks) associated with a specific original_doc_id.
+        Deletes all entities (chunks) associated with a specific doc_id.
         
         Args:
-            original_doc_id (str): The document ID to delete all chunks for.
+            doc_id (str): The document ID to delete all chunks for.
         """
         if not self.client:
             print("ERROR: Client is not connected. Cannot delete.")
@@ -244,7 +298,7 @@ class MilvusSchemaManager:
         
         # Build the filter expression
         # Note: Use double quotes inside the string for string literals in the filter
-        expression = f"original_doc_id == \"{original_doc_id}\""
+        expression = f"doc_id == \"{doc_id}\""
         
         print(f"Attempting to delete entities with filter: {expression}")
         
@@ -260,7 +314,7 @@ class MilvusSchemaManager:
             num_to_delete = len(query_res)
             
             if num_to_delete == 0:
-                print(f"No entities found with original_doc_id '{original_doc_id}'. Nothing to delete.")
+                print(f"No entities found with doc_id '{doc_id}'. Nothing to delete.")
                 return
             
             print(f"Found {num_to_delete} entities. Proceeding with deletion...")
@@ -275,13 +329,157 @@ class MilvusSchemaManager:
             
             # IMPORTANT: Call flush after delete to make the change persistent
             self.flush()
-            print(f"Flushed collection. Deletion of '{original_doc_id}' chunks is now persistent.")
+            print(f"Flushed collection. Deletion of '{doc_id}' chunks is now persistent.")
             
             return res
             
         except Exception as e:
-            print(f"ERROR during deletion for '{original_doc_id}': {e}")
+            print(f"ERROR during deletion for '{doc_id}': {e}")
             return None
+
+
+class MilvusClient:
+    """
+    Lightweight wrapper expected by the HybridRetriever.
+    - Connects to Milvus using host/port/collection
+    - Optionally accepts an embedder callable to turn text -> dense vector
+    - search(query, top_k) returns a list of hits with .chunk and .score
+    """
+
+    def __init__(self, host: str = "localhost", port: int = 19530, collection: str = "uraxlaw_articles", dense_dim: int = 768, embedder: Optional[Callable[[str], List[float]]] = None):
+        self._uri = f"http://{host}:{port}"
+        self._collection = collection
+        self._dense_dim = dense_dim
+        self._embedder = embedder
+        self._client: Optional[PyMilvusClient] = None
+        self._sparse_encoder: Optional[Callable[[str], Dict[int, float]]] = None
+
+    def set_embedder(self, embedder: Callable[[str], List[float]], auto_detect_dim: bool = True):
+        """
+        Set embedder function. Optionally auto-detect dimension from embedder.
+        
+        Args:
+            embedder: Function that takes text and returns embedding vector
+            auto_detect_dim: If True, automatically detect and update dense_dim from embedder
+        """
+        self._embedder = embedder
+        if auto_detect_dim:
+            # Auto-detect dimension by calling embedder with a test string
+            try:
+                test_vec = embedder("test")
+                if isinstance(test_vec, list) and len(test_vec) > 0:
+                    self._dense_dim = len(test_vec)
+            except Exception:
+                pass  # Keep original dense_dim if detection fails
+
+    def set_sparse_encoder(self, encoder: Callable[[str], Dict[int, float]]):
+        self._sparse_encoder = encoder
+
+    def _ensure_client(self) -> PyMilvusClient:
+        if self._client is None:
+            self._client = PyMilvusClient(uri=self._uri)
+        return self._client
+
+    def search(self, query: str, top_k: int = 5):
+        client = self._ensure_client()
+        if self._embedder is None and self._sparse_encoder is None:
+            return []
+
+        # Build dense vector if available
+        dense_vec = None
+        if self._embedder is not None:
+            dense_vec = self._embedder(query)
+            if not isinstance(dense_vec, list) or len(dense_vec) != self._dense_dim:
+                raise ValueError("Embedder must return a list[float] of length dense_dim")
+
+        # Build sparse vector if available
+        sparse_vec = None
+        if self._sparse_encoder is not None:
+            sparse_raw = self._sparse_encoder(query)
+            # Convert dict to Milvus sparse format: {"indices": [...], "values": [...]}
+            if isinstance(sparse_raw, dict) and "indices" in sparse_raw and "values" in sparse_raw:
+                sparse_vec = sparse_raw
+            elif isinstance(sparse_raw, dict):
+                # Convert {index: value} to {"indices": [...], "values": [...]}
+                items = sorted(sparse_raw.items(), key=lambda x: x[0])
+                sparse_vec = {"indices": [int(i) for i, _ in items], "values": [float(v) for _, v in items]}
+            else:
+                sparse_vec = sparse_raw
+
+        try:
+            # PyMilvus MilvusClient doesn't support hybrid search directly
+            # Use dense-only if available (most common case)
+            # For true hybrid search, use MilvusSchemaManager.search() instead
+            if dense_vec is not None:
+                # Dense-only search
+                results = client.search(
+                    collection_name=self._collection,
+                    data=[dense_vec],
+                    anns_field="dense_vector",
+                    search_params={"metric_type": "COSINE", "params": {"ef": 128}},
+                    limit=max(1, top_k),
+                    output_fields=["article_id", "doc_id", "text", "title", "doc_type"],
+                )
+                hits = results[0] if results else []
+            elif sparse_vec is not None:
+                # Sparse-only search
+                results = client.search(
+                    collection_name=self._collection,
+                    data=[sparse_vec],
+                    anns_field="sparse_vector",
+                    search_params={"metric_type": "IP"},
+                    limit=max(1, top_k),
+                    output_fields=["article_id", "doc_id", "text", "title", "doc_type"],
+                )
+                hits = results[0] if results else []
+            else:
+                hits = []
+        except Exception as e:
+            print(f"Milvus search error: {e}")
+            hits = []
+
+        from uraxlaw.lawrag.models import Chunk
+
+        out = []
+        for h in hits:
+            try:
+                # Try dict-like access first (most common case)
+                try:
+                    entity = h["entity"] if "entity" in h else {}
+                    chunk_id = entity.get("article_id") if isinstance(entity, dict) else h.get("article_id")
+                    doc_id = entity.get("doc_id", "") if isinstance(entity, dict) else ""
+                    text = entity.get("text", "") if isinstance(entity, dict) else ""
+                    distance = h["distance"] if "distance" in h else h.get("distance")
+                except (KeyError, TypeError):
+                    # Fallback: attribute access
+                    entity = getattr(h, "entity", {})
+                    if isinstance(entity, dict):
+                        chunk_id = entity.get("article_id")
+                        doc_id = entity.get("doc_id", "")
+                        text = entity.get("text", "")
+                    else:
+                        chunk_id = getattr(entity, "article_id", None) or getattr(h, "article_id", None)
+                        doc_id = getattr(entity, "doc_id", "") or getattr(h, "doc_id", "")
+                        text = getattr(entity, "text", "") or getattr(h, "text", "")
+                    distance = getattr(h, "distance", None)
+                
+                if chunk_id and text:
+                    chunk = Chunk(
+                        id=str(chunk_id),
+                        document_id=str(doc_id),
+                        node_id=None,
+                        text=str(text),
+                    )
+                    # Convert distance to score (COSINE: distance = 1 - similarity)
+                    if distance is not None:
+                        score = 1.0 - float(distance) if distance <= 1.0 else 1.0 / (1.0 + float(distance))
+                    else:
+                        score = 0.0
+                    out.append(SimpleNamespace(chunk=chunk, score=float(score)))
+            except Exception:
+                continue
+        
+        return out
 
 # --- Example usage of the class ---
 if __name__ == "__main__":
@@ -307,11 +505,41 @@ if __name__ == "__main__":
             # 2. Prepare and Insert Mock Data
             print("\n--- Testing Data Insertion ---")
             mock_data = [
-                # Chunks for doc_1
-                {"id": "chunk_001", "original_doc_id": "doc_1", "text": "This is a guide on JIRA.", "source": "Confluence", "url": "http://example.com/doc1", "dense_vec": [random.random() for _ in range(DENSE_DIM)], "sparse_vec": {100: 0.2, 500: 0.9}},
-                {"id": "chunk_002", "original_doc_id": "doc_1", "text": "JIRA is good for bug tracking.", "source": "Confluence", "url": "http://example.com/doc1", "dense_vec": [random.random() for _ in range(DENSE_DIM)], "sparse_vec": {500: 0.7, 2000: 0.3}},
-                # Chunk for doc_2
-                {"id": "chunk_003", "original_doc_id": "doc_2", "text": "How to manage sprints.", "source": "Internal Wiki", "url": "http://example.com/doc3", "dense_vec": [random.random() for _ in range(DENSE_DIM)], "sparse_vec": {3000: 0.8}}
+                # Example chunks with new schema
+                {
+                    "article_id": "L-2013-43:1",
+                    "doc_id": "L-2013-43",
+                    "doc_type": "Law",
+                    "article_number": 1,
+                    "clause_number": None,
+                    "text": "This is a guide on JIRA.",
+                    "title": "Phạm vi điều chỉnh",
+                    "dense_vector": [random.random() for _ in range(DENSE_DIM)],
+                    "sparse_vector": {100: 0.2, 500: 0.9},
+                    "year": 2013,
+                    "agency": "Quốc hội",
+                    "status": "active",
+                    "effective_date": "2013-01-01",
+                    "source_url": "http://example.com/doc1",
+                    "last_update": 1234567890,
+                },
+                {
+                    "article_id": "L-2013-43:2.1",
+                    "doc_id": "L-2013-43",
+                    "doc_type": "Law",
+                    "article_number": 2,
+                    "clause_number": "1",
+                    "text": "JIRA is good for bug tracking.",
+                    "title": "Đối tượng áp dụng",
+                    "dense_vector": [random.random() for _ in range(DENSE_DIM)],
+                    "sparse_vector": {500: 0.7, 2000: 0.3},
+                    "year": 2013,
+                    "agency": "Quốc hội",
+                    "status": "active",
+                    "effective_date": "2013-01-01",
+                    "source_url": "http://example.com/doc1",
+                    "last_update": 1234567890,
+                },
             ]
             manager.insert(mock_data)
             manager.flush()
@@ -323,16 +551,17 @@ if __name__ == "__main__":
                 dense_query_vector=[random.random() for _ in range(DENSE_DIM)],
                 sparse_query_vector={100: 0.6, 500: 0.8},
                 limit=3,
-                output_fields=["id", "original_doc_id"]
+                output_fields=["article_id", "doc_id", "text"]
             )
             print(f"Search found {len(search_results)} results:")
             for hit in search_results:
-                print(f"  ID: {hit['id']}, DocID: {hit['entity']['original_doc_id']}")
+                entity = hit.get("entity", {})
+                print(f"  Article ID: {entity.get('article_id')}, Doc ID: {entity.get('doc_id')}")
 
             # 4. Test Delete Function
             print("\n--- Testing Deletion ---")
-            # Delete all chunks from "doc_1"
-            manager.delete_by_original_doc_id("doc_1")
+            # Delete all chunks from "L-2013-43"
+            manager.delete_by_doc_id("L-2013-43")
 
             # 5. Test Search (After Delete)
             print("\n--- Testing Search (After Delete) ---")
@@ -342,20 +571,21 @@ if __name__ == "__main__":
                 dense_query_vector=[random.random() for _ in range(DENSE_DIM)],
                 sparse_query_vector={100: 0.6, 500: 0.8}, # Still searching for JIRA
                 limit=3,
-                output_fields=["id", "original_doc_id"]
+                output_fields=["article_id", "doc_id", "text"]
             )
             
             print(f"Search found {len(search_results_after_delete)} results:")
             if search_results_after_delete:
                 for hit in search_results_after_delete:
-                    print(f"  ID: {hit['id']}, DocID: {hit['entity']['original_doc_id']}")
+                    entity = hit.get("entity", {})
+                    print(f"  Article ID: {entity.get('article_id')}, Doc ID: {entity.get('doc_id')}")
                 
-                # Check if any "doc_1" chunks were returned
-                found_doc_1 = any(hit['entity']['original_doc_id'] == 'doc_1' for hit in search_results_after_delete)
-                if not found_doc_1:
-                    print("SUCCESS: No chunks from 'doc_1' were found after deletion.")
+                # Check if any "L-2013-43" chunks were returned
+                found_doc = any(hit.get("entity", {}).get("doc_id") == "L-2013-43" for hit in search_results_after_delete)
+                if not found_doc:
+                    print("SUCCESS: No chunks from 'L-2013-43' were found after deletion.")
                 else:
-                    print("FAILURE: Chunks from 'doc_1' were found after deletion.")
+                    print("FAILURE: Chunks from 'L-2013-43' were found after deletion.")
             else:
                 print("SUCCESS: No results found (as expected, or unrelated results found).")
             

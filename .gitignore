@@ -1,2 +1,50 @@
 neo4j
 volumes
+# --- Environment ---
+.env
+venv/
+env/
+.venv/
+
+# --- Python build ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+
+# --- Project specific ---
+uv.lock
+pyproject.toml
+UraxLaw.egg-info/
+
+# --- IDE & Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Data & Logs ---
+data/
+logs/
+*.log
+*.csv
+data/
+
+# --- Temporary files ---
+*.bak
+*.tmp
+*.cache
+.DS_Store
+Thumbs.db
+
+# --- Example & generated folders ---
+Plan.md
+
+# --- Model / vector DB cache ---
+__pycache__/
