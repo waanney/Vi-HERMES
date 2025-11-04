@@ -19,8 +19,6 @@ build/
 *.so
 
 # --- Project specific ---
-uv.lock
-pyproject.toml
 UraxLaw.egg-info/
 
 # --- IDE & Editor ---
