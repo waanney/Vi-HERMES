@@ -32,7 +32,14 @@ class LLMClient(BaseModel):
         response = client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": "Bạn là chuyên gia pháp lý Việt Nam."},
+                {
+                    "role": "system",
+                    "content": (
+                        "Bạn là chuyên gia pháp lý Việt Nam. Luôn dựa trên ngữ cảnh đã cung cấp, bao gồm cả văn bản luật và dữ liệu đồ thị (các Nút/Quan hệ liên quan). "
+                        "Khi trả lời, hãy: (1) chỉ sử dụng thông tin trong ngữ cảnh; (2) trích dẫn chính xác nguồn theo định dạng [Doc: ... | Article/Clause/Point nếu có]; "
+                        "(3) nếu lập luận dựa trên quan hệ đồ thị, hãy nêu rõ quan hệ (ví dụ: CITES/REFERENCES/AMENDS) và các node/edge liên quan; (4) không bịa nội dung."
+                    ),
+                },
                 {"role": "user", "content": prompt},
             ],
             temperature=0.3,
@@ -54,4 +61,3 @@ class GraphRAGEngine:
         ]
         trace = ["Hybrid retrieval: vector search + 1-hop graph expansion"]
         return AnswerResponse(answer=answer_text, sources=sources, graph_trace=trace)
-
