@@ -17,9 +17,11 @@ class Settings(BaseSettings):
 
     # LLM
     llm_model: str = Field(default="gpt-4o")
+    openai_api_key: str | None = Field(default=None)
 
     model_config = {
         "env_file": ".env",
+        "extra": "ignore",  # Ignore extra fields in .env that are not in the model
     }
 
 

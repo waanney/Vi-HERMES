@@ -19,7 +19,7 @@ class DocumentParser:
         """
         Extract metadata from text and return clean text with metadata.
 
-        Looks for "--- THÔNG TIN THÊM ---" section at the end of the file.
+        Looks for "=== METADATA ===" or "--- THÔNG TIN THÊM ---" section.
         If metadata section not found, tries to extract from file name and content.
         
         Args:
@@ -31,11 +31,20 @@ class DocumentParser:
             - clean_text: Text with metadata section removed
             - metadata: DocumentMetadata object if metadata found, None otherwise
         """
-        # Find metadata section
-        metadata_start = text.find("--- THÔNG TIN THÊM ---")
-        has_metadata_section = metadata_start != -1
+        # Find metadata section - support both formats
+        metadata_start_new = text.find("=== METADATA ===")
+        metadata_start_old = text.find("--- THÔNG TIN THÊM ---")
         
-        if not has_metadata_section:
+        # Use the first one found
+        if metadata_start_new != -1:
+            metadata_start = metadata_start_new
+            metadata_end_marker = "================"
+            is_new_format = True
+        elif metadata_start_old != -1:
+            metadata_start = metadata_start_old
+            metadata_end_marker = None  # Old format doesn't have clear end marker
+            is_new_format = False
+        else:
             # Try to extract from file name and content
             metadata = self._extract_from_filename_and_content(text, file_path)
             if metadata:
@@ -43,26 +52,52 @@ class DocumentParser:
             return text, None
 
         # Split text into content and metadata
-        content_text = text[:metadata_start].strip()
-        metadata_text = text[metadata_start:]
+        if is_new_format:
+            # Find end of metadata section
+            if metadata_end_marker:
+                metadata_end = text.find(metadata_end_marker, metadata_start + len("=== METADATA ==="))
+                if metadata_end != -1:
+                    content_text = text[:metadata_start].strip()
+                    metadata_text = text[metadata_start:metadata_end + len(metadata_end_marker)].strip()
+                else:
+                    # Fallback: use everything after metadata start
+                    content_text = text[:metadata_start].strip()
+                    metadata_text = text[metadata_start:].strip()
+            else:
+                content_text = text[:metadata_start].strip()
+                metadata_text = text[metadata_start:].strip()
+        else:
+            content_text = text[:metadata_start].strip()
+            metadata_text = text[metadata_start:].strip()
 
         # Parse metadata fields
         metadata = {}
         
-        # Extract field patterns - improved to handle multiline
-        patterns = {
-            "Ten": r"Ten:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "So hieu": r"So hieu:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Loai van ban": r"Loai van ban:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Linh vuc nganh": r"Linh vuc nganh:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Noi ban hanh": r"Noi ban hanh:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Nguoi ky": r"Nguoi ky:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Ngay ban hanh": r"Ngay ban hanh:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Ngay hieu luc": r"Ngay hieu luc:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Ngay dang": r"Ngay dang:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "So cong bao": r"So cong bao:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-            "Tinh trang": r"Tinh trang:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
-        }
+        # Extract field patterns - support both old and new formats
+        if is_new_format:
+            # New format: ky_hieu:, ngay_ban_hanh:, trich_yeu:, don_vi_ban_hanh:, File_Goc:
+            patterns = {
+                "ky_hieu": r"ky_hieu:\s*(.+?)(?:\n(?!\s*[a-z_]+:)|$)",
+                "ngay_ban_hanh": r"ngay_ban_hanh:\s*(.+?)(?:\n(?!\s*[a-z_]+:)|$)",
+                "trich_yeu": r"trich_yeu:\s*(.+?)(?:\n(?!\s*[a-z_]+:)|$)",
+                "don_vi_ban_hanh": r"don_vi_ban_hanh:\s*(.+?)(?:\n(?!\s*[a-z_]+:)|$)",
+                "File_Goc": r"File_Goc:\s*(.+?)(?:\n(?!\s*[a-z_]+:)|$)",
+            }
+        else:
+            # Old format: Ten:, So hieu:, etc.
+            patterns = {
+                "Ten": r"Ten:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "So hieu": r"So hieu:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Loai van ban": r"Loai van ban:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Linh vuc nganh": r"Linh vuc nganh:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Noi ban hanh": r"Noi ban hanh:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Nguoi ky": r"Nguoi ky:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Ngay ban hanh": r"Ngay ban hanh:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Ngay hieu luc": r"Ngay hieu luc:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Ngay dang": r"Ngay dang:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "So cong bao": r"So cong bao:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+                "Tinh trang": r"Tinh trang:\s*(.+?)(?:\n(?!\s*[A-Z][a-z]+:)|$)",
+            }
 
         for key, pattern in patterns.items():
             match = re.search(pattern, metadata_text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
@@ -75,31 +110,43 @@ class DocumentParser:
         if not metadata:
             return content_text, None
 
-        # Extract doc_id from So hieu or generate from other fields
-        doc_id = metadata.get("So hieu", "").strip()
-        if not doc_id:
-            # Try to generate from Loai van ban and So hieu pattern
-            loai = metadata.get("Loai van ban", "").strip()
-            if "Thông tư" in loai and "So hieu" in metadata_text:
-                # Extract number from So hieu
-                so_hieu_match = re.search(r"So hieu:\s*([^\n]+)", metadata_text, re.IGNORECASE)
-                if so_hieu_match:
-                    doc_id = so_hieu_match.group(1).strip()
+        # Extract doc_id - support both formats
+        if is_new_format:
+            doc_id = metadata.get("ky_hieu", "").strip()
+        else:
+            doc_id = metadata.get("So hieu", "").strip()
+            if not doc_id:
+                # Try to generate from Loai van ban and So hieu pattern
+                loai = metadata.get("Loai van ban", "").strip()
+                if "Thông tư" in loai and "So hieu" in metadata_text:
+                    # Extract number from So hieu
+                    so_hieu_match = re.search(r"So hieu:\s*([^\n]+)", metadata_text, re.IGNORECASE)
+                    if so_hieu_match:
+                        doc_id = so_hieu_match.group(1).strip()
 
-        # Map status
-        tinh_trang = metadata.get("Tinh trang", "").strip().lower()
-        status = None
-        if "không còn phù hợp" in tinh_trang or "hết hiệu lực" in tinh_trang:
-            status = "expired"
-        elif "có hiệu lực" in tinh_trang or "đang hiệu lực" in tinh_trang:
-            status = "effective"
-        elif "đã sửa đổi" in tinh_trang:
-            status = "amended"
-        elif "dự thảo" in tinh_trang:
-            status = "draft"
+        # Map status - new format doesn't have status, default to effective
+        if is_new_format:
+            status = "effective"  # Default for new format
+        else:
+            tinh_trang = metadata.get("Tinh trang", "").strip().lower()
+            status = None
+            if "không còn phù hợp" in tinh_trang or "hết hiệu lực" in tinh_trang:
+                status = "expired"
+            elif "có hiệu lực" in tinh_trang or "đang hiệu lực" in tinh_trang:
+                status = "effective"
+            elif "đã sửa đổi" in tinh_trang:
+                status = "amended"
+            elif "dự thảo" in tinh_trang:
+                status = "draft"
 
-        # Extract effect_date (prefer Ngay hieu luc, fallback to Ngay ban hanh)
-        effect_date = metadata.get("Ngay hieu luc") or metadata.get("Ngay ban hanh")
+        # Extract effect_date - support both formats
+        if is_new_format:
+            effect_date = metadata.get("ngay_ban_hanh", "").strip()
+            # Remove time part if present (e.g., "21/07/2025 17:36" -> "21/07/2025")
+            if effect_date:
+                effect_date = effect_date.split()[0]
+        else:
+            effect_date = metadata.get("Ngay hieu luc") or metadata.get("Ngay ban hanh")
         
         # Normalize date format (DD/MM/YYYY -> YYYY-MM-DD)
         if effect_date:
@@ -127,21 +174,43 @@ class DocumentParser:
                             # Keep original if can't parse
                             effect_date = effect_date.strip()
 
-        # Extract field from Linh vuc nganh
-        field = metadata.get("Linh vuc nganh", "").strip()
-        # Take first part if comma-separated
-        if "," in field:
-            field = field.split(",")[0].strip()
+        # Extract field - support both formats
+        if is_new_format:
+            # New format: use trich_yeu as field or leave None
+            field = None  # trich_yeu is more like a summary/description
+        else:
+            field = metadata.get("Linh vuc nganh", "").strip()
+            # Take first part if comma-separated
+            if "," in field:
+                field = field.split(",")[0].strip()
+
+        # Extract issuing_authority - support both formats
+        if is_new_format:
+            issuing_authority = metadata.get("don_vi_ban_hanh", "").strip() or None
+        else:
+            issuing_authority = metadata.get("Noi ban hanh", "").strip() or None
+
+        # Extract source_url - new format has File_Goc
+        source_url = None
+        if is_new_format:
+            file_goc = metadata.get("File_Goc", "").strip()
+            if file_goc:
+                # Could construct URL if needed, or just store filename
+                source_url = file_goc
+
+        # Normalize doc_id if needed
+        if doc_id:
+            doc_id = self._normalize_doc_id(doc_id)
 
         # Create DocumentMetadata
         doc_metadata = DocumentMetadata(
             document_id=doc_id or "UNKNOWN",
-            issuing_authority=metadata.get("Noi ban hanh", "").strip() or None,
+            issuing_authority=issuing_authority,
             effect_date=effect_date or None,
             field=field or None,
             status=status,
             version=None,
-            source_url=None,
+            source_url=source_url,
         )
 
         return content_text, doc_metadata
@@ -209,7 +278,7 @@ class DocumentParser:
         if not doc_id:
             # Try to find "Số: X/Y/Z" pattern in content
             # Format: "Số: 74/2024/QĐ-UBND" or "Số: 649/QĐ-UBND"
-            so_match = re.search(r"Số:\s*([^\n]+)", text, re.IGNORECASE)
+            so_match = re.search(r"Số:\s*([^\n]+)", text, re.IGNORECASE) #type: ignore
             if so_match:
                 doc_id = so_match.group(1).strip()
                 # Normalize doc_id to ensure proper format
@@ -224,22 +293,22 @@ class DocumentParser:
 
         # Extract issuing authority from content
         # Look for "ỦY BAN NHÂN DÂN" or "THỦ TƯỚNG" patterns
-        uy_ban_match = re.search(r"ỦY\s+BAN\s+NHÂN\s+DÂN\s+([^\n]+)", text, re.IGNORECASE | re.MULTILINE)
+        uy_ban_match = re.search(r"ỦY\s+BAN\s+NHÂN\s+DÂN\s+([^\n]+)", text, re.IGNORECASE | re.MULTILINE) #type: ignore
         if uy_ban_match:
             issuing_authority = f"Ủy ban nhân dân {uy_ban_match.group(1).strip()}"
         else:
-            thu_tuong_match = re.search(r"THỦ\s+TƯỚNG\s+CHÍNH\s+PHỦ", text, re.IGNORECASE)
+            thu_tuong_match = re.search(r"THỦ\s+TƯỚNG\s+CHÍNH\s+PHỦ", text, re.IGNORECASE) #type: ignore
             if thu_tuong_match:
                 issuing_authority = "Thủ tướng Chính phủ"
             else:
                 # Look for other authorities
-                bo_match = re.search(r"BỘ\s+([^\n]+)", text, re.IGNORECASE)
+                bo_match = re.search(r"BỘ\s+([^\n]+)", text, re.IGNORECASE) #type: ignore
                 if bo_match:
                     issuing_authority = f"Bộ {bo_match.group(1).strip()}"
 
         # Extract effect_date from content
         # Look for "ngày DD tháng MM năm YYYY" pattern
-        date_match = re.search(r"ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})", text, re.IGNORECASE)
+        date_match = re.search(r"ngày\s+(\d{1,2})\s+tháng\s+(\d{1,2})\s+năm\s+(\d{4})", text, re.IGNORECASE) #type: ignore
         if date_match:
             day, month, year = date_match.groups()
             effect_date = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
@@ -374,7 +443,7 @@ class DocumentParser:
         try:
             from docx import Document
 
-            doc = Document(file_path)
+            doc = Document(file_path) #type: ignore 
             text_parts = []
             for para in doc.paragraphs:
                 if para.text.strip():

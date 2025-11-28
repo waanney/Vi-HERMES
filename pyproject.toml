@@ -21,6 +21,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "chainlit>=1.0.0",
     "neo4j>=6.0.2",
     "openai>=1.0.0",
     "pydantic>=2.7",

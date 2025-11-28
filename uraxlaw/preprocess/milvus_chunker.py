@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Callable, Dict, List, Optional
 
-from uraxlaw.preprocess.agent_chunker import AgentChunker, ArticleChunk
+from uraxlaw.preprocess.agent_chunker import AgentChunker
 from uraxlaw.preprocess.models import DocumentMetadata
 
 
@@ -116,8 +116,8 @@ class MilvusChunker:
                 self._tfidf_vectorizer.fit(corpus)
 
                 def _encode(text: str) -> Dict[int, float]:
-                    X = self._tfidf_vectorizer.transform([text])
-                    coo = X.tocoo()
+                    X = self._tfidf_vectorizer.transform([text]) #type: ignore
+                    coo = X.tocoo() #type: ignore
                     return {int(j): float(v) for j, v in zip(coo.col, coo.data)}
 
                 self._sparse_encoder = _encode

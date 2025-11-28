@@ -51,88 +51,48 @@ async def test_parser_to_neo4j_flow():
 
     # Get project root
     project_root = Path(__file__).parent.parent
-    data_dir = project_root / "data" / "export_1"
+    data_dir = project_root / "data" / "data_txt_clean 2" / "data_txt_clean"
 
-    # Test files from export_1 folder - 5 files
-    test_files = [
-        {
-            "file": "649_QĐ-UBND.txt",
-            "doc_id": "649/QĐ-UBND",  # Extract from file name or content
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="649/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân tỉnh Kon Tum",
-                effect_date="2024-10-10",
-                field="Tài chính",
-                status="effective",
-            ),
-        },
-        {
-            "file": "74_2024_QĐ-UBND_1.txt",
-            "doc_id": "74/2024/QĐ-UBND",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="74/2024/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân Thành phố Hồ Chí Minh",
-                effect_date="2024-10-12",
-                field="Tổ chức cán bộ",
-                status="effective",
-            ),
-        },
-        {
-            "file": "66_2024_QĐ-UBND.txt",
-            "doc_id": "66/2024/QĐ-UBND",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="66/2024/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân",
-                effect_date="2024-01-01",
-                field="Hành chính",
-                status="effective",
-            ),
-        },
-        {
-            "file": "16_2024_QĐ-TTg.txt",
-            "doc_id": "16/2024/QĐ-TTg",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="16/2024/QĐ-TTg",
-                issuing_authority="Thủ tướng Chính phủ",
-                effect_date="2024-01-01",
-                field="Hành chính",
-                status="effective",
-            ),
-        },
-        {
-            "file": "42_2024_QĐ-UBND_1.txt",
-            "doc_id": "42/2024/QĐ-UBND",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="42/2024/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân",
-                effect_date="2024-01-01",
-                field="Hành chính",
-                status="effective",
-            ),
-        },
-    ]
+    # Get all .txt files from the new data directory
+    print(f"📁 Scanning data directory: {data_dir}")
+    all_txt_files = sorted(list(data_dir.glob("*.txt")))  # Sort for consistent processing
+    print(f"📊 Found {len(all_txt_files)} .txt files")
+    
+    # Process ALL files
+    test_files = []
+    for file_path in all_txt_files:
+        test_files.append({
+            "file": file_path.name,
+            "file_path": file_path,  # Full path
+            "doc_id": None,  # Will be extracted from metadata
+            "doc_type": None,  # Will be extracted from metadata
+            "metadata": None,  # Will be extracted from file
+        })
+    
+    print(f"📝 Processing ALL {len(test_files)} files\n")
 
     all_inserted_nodes = 0
     all_inserted_edges = 0
+    successful_files = 0
+    failed_files = 0
 
-    for test_case in test_files:
+    total_files = len(test_files)
+    print(f"🚀 Starting to process {total_files} files...\n")
+
+    for idx, test_case in enumerate(test_files, 1):
         filename = test_case["file"]
-        default_doc_id = test_case["doc_id"]
-        default_doc_type = test_case["doc_type"]
-        provided_metadata = test_case["metadata"]
-        file_path = data_dir / filename
+        # Use full path if provided, otherwise construct from data_dir
+        file_path = test_case.get("file_path") or (data_dir / filename)
+        default_doc_id = test_case.get("doc_id")
+        default_doc_type = test_case.get("doc_type")
+        provided_metadata = test_case.get("metadata")
 
         if not file_path.exists():
             print(f"❌ File not found: {file_path}")
             continue
 
         print(f"\n{'─' * 70}")
-        print(f"📄 Processing: {filename}")
+        print(f"📄 [{idx}/{total_files}] Processing: {filename}")
         print(f"📁 File path: {file_path}")
         print(f"{'─' * 70}\n")
 
@@ -163,18 +123,31 @@ async def test_parser_to_neo4j_flow():
                 # Infer doc_type from doc_id
                 doc_type = parser._infer_doc_type(doc_id) if doc_id else default_doc_type
                 
-                # Fill missing fields from provided metadata
-                if not metadata.issuing_authority and provided_metadata.issuing_authority:
-                    metadata.issuing_authority = provided_metadata.issuing_authority
-                if not metadata.effect_date and provided_metadata.effect_date:
-                    metadata.effect_date = provided_metadata.effect_date
-                if not metadata.field and provided_metadata.field:
-                    metadata.field = provided_metadata.field
-                if not metadata.status and provided_metadata.status:
-                    metadata.status = provided_metadata.status
+                # Fill missing fields from provided metadata (if available)
+                if provided_metadata:
+                    if not metadata.issuing_authority and provided_metadata.issuing_authority:
+                        metadata.issuing_authority = provided_metadata.issuing_authority
+                    if not metadata.effect_date and provided_metadata.effect_date:
+                        metadata.effect_date = provided_metadata.effect_date
+                    if not metadata.field and provided_metadata.field:
+                        metadata.field = provided_metadata.field
+                    if not metadata.status and provided_metadata.status:
+                        metadata.status = provided_metadata.status
             else:
-                print("⚠️  No metadata found in file, using provided metadata")
-                metadata = provided_metadata
+                print("⚠️  No metadata found in file")
+                if provided_metadata:
+                    print("   Using provided metadata")
+                    metadata = provided_metadata
+                else:
+                    print("   Creating default metadata")
+                    from uraxlaw.preprocess.models import DocumentMetadata
+                    metadata = DocumentMetadata(
+                        document_id=default_doc_id,
+                        issuing_authority=None,
+                        effect_date=None,
+                        field=None,
+                        status="effective",
+                    )
                 doc_id = default_doc_id
                 doc_type = default_doc_type
 
@@ -182,13 +155,26 @@ async def test_parser_to_neo4j_flow():
 
             # Step 4: Chunk document for Neo4j
             print("🔗 Step 4: Chunking document for Neo4j...")
-            nodes, edges = await neo4j_chunker.chunk_for_neo4j(
-                text=text,
-                doc_id=doc_id,
-                doc_type=doc_type,
-                metadata=metadata,
-            )
-            print(f"✅ Generated {len(nodes)} nodes and {len(edges)} edges")
+            try:
+                # Add timeout for chunking (5 minutes per file)
+                nodes, edges = await asyncio.wait_for(
+                    neo4j_chunker.chunk_for_neo4j(
+                        text=text,
+                        doc_id=doc_id,
+                        doc_type=doc_type,
+                        metadata=metadata,
+                    ),
+                    timeout=300.0  # 5 minutes timeout
+                )
+                print(f"✅ Generated {len(nodes)} nodes and {len(edges)} edges")
+            except asyncio.TimeoutError:
+                print(f"⏱️  Timeout: Chunking took too long for {filename}, skipping...")
+                failed_files += 1
+                continue
+            except Exception as e:
+                print(f"❌ Chunking error for {filename}: {e}")
+                failed_files += 1
+                continue
 
             # Display statistics
             node_types = {}
@@ -257,6 +243,7 @@ async def test_parser_to_neo4j_flow():
 
             all_inserted_nodes += inserted_nodes
             all_inserted_edges += inserted_edges
+            successful_files += 1
 
             # Step 6: Query and verify
             print("🔍 Step 6: Querying and verifying data...")
@@ -290,7 +277,8 @@ async def test_parser_to_neo4j_flow():
                     """,
                     {"doc_id": doc_id},
                 )
-                article_count = result.single()["count"]
+                single_record = result.single()
+                article_count = single_record["count"] if single_record else 0
                 print(f"✅ Articles: {article_count}")
 
                 # Count clauses
@@ -301,7 +289,8 @@ async def test_parser_to_neo4j_flow():
                     """,
                     {"doc_id": doc_id},
                 )
-                clause_count = result.single()["count"]
+                single_record = result.single()
+                clause_count = single_record["count"] if single_record else 0
                 print(f"✅ Clauses: {clause_count}")
 
                 # Count relationships
@@ -321,6 +310,7 @@ async def test_parser_to_neo4j_flow():
 
         except Exception as e:
             print(f"❌ Error processing {filename}: {e}")
+            failed_files += 1
             import traceback
 
             traceback.print_exc()
@@ -330,8 +320,10 @@ async def test_parser_to_neo4j_flow():
     print(f"\n{'=' * 70}")
     print("📊 Final Summary")
     print(f"{'=' * 70}")
-    print(f"Total nodes inserted: {all_inserted_nodes}")
-    print(f"Total edges inserted: {all_inserted_edges}")
+    print(f"✅ Successfully processed: {successful_files}/{total_files} files")
+    print(f"❌ Failed: {failed_files}/{total_files} files")
+    print(f"📊 Total nodes inserted: {all_inserted_nodes}")
+    print(f"📊 Total edges inserted: {all_inserted_edges}")
     print()
 
     # Database statistics
@@ -369,7 +361,8 @@ async def test_parser_to_neo4j_flow():
                 RETURN count(d) as count
                 """
             )
-            doc_count = result.single()["count"]
+            single_record = result.single()
+            doc_count = single_record["count"] if single_record else 0
             print(f"\n✅ Total documents in database: {doc_count}")
 
     except Exception as e:

@@ -69,7 +69,7 @@ class Neo4jClient:
             ]
             for constraint in constraints:
                 try:
-                    session.run(constraint)
+                    session.run(constraint) #type: ignore
                 except Exception:
                     pass  # Constraint may already exist
 
@@ -86,7 +86,7 @@ class Neo4jClient:
             ]
             for index in indexes:
                 try:
-                    session.run(index)
+                    session.run(index) #type: ignore
                 except Exception:
                     pass  # Index may already exist
 
@@ -105,7 +105,7 @@ class Neo4jClient:
     def run_cypher(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         params = params or {}
         with self._driver.session() as session:
-            return session.run(query, params).data()
+            return session.run(query, params).data() #type: ignore
 
     def upsert_node(self, label: str, node_id: str, properties: Optional[Dict[str, Any]] = None) -> None:
         """Upsert a node with appropriate identifier property."""
@@ -123,7 +123,7 @@ class Neo4jClient:
         
         with self._driver.session() as session:
             session.run(
-                f"MERGE (n:{label} {{{id_prop}:$id}}) SET n += $props",
+                f"MERGE (n:{label} {{{id_prop}:$id}}) SET n += $props", #type: ignore
                 {"id": node_id, "props": properties},
             )
 
@@ -146,15 +146,15 @@ class Neo4jClient:
         tgt_id_prop = "doc_id" if tgt_label == "Document" else ("article_id" if tgt_label == "Article" else ("clause_id" if tgt_label == "Clause" else "id"))
         
         with self._driver.session() as session:
-            session.run(
+            session.run( 
                 f"""
-                MERGE (s:{src_label} {{{src_id_prop}:$sid}})
+                MERGE (s:{src_label} {{{src_id_prop}:$sid}})  
                 MERGE (t:{tgt_label} {{{tgt_id_prop}:$tid}})
                 MERGE (s)-[r:{relation}]->(t)
                 SET r += $props
-                """,
+                """, #type: ignore
                 {"sid": src_id, "tid": tgt_id, "props": properties},
-            )
+            ) 
 
     def expand_related(self, node_id: Optional[str], max_hops: int = 1, limit: int = 50) -> List[Tuple[Node, Edge]]:
         """Expand related nodes via relationships."""
@@ -181,7 +181,7 @@ class Neo4jClient:
         LIMIT $limit
         """
         with self._driver.session() as session:
-            recs = session.run(query, {"id": node_id, "limit": max(1, limit)}).data()
+            recs = session.run(query, {"id": node_id, "limit": max(1, limit)}).data() #type: ignore
 
         results: List[Tuple[Node, Edge]] = []
         for rec in recs:
@@ -204,11 +204,11 @@ class Neo4jClient:
                 or rec.get("src_clause_id")
             )
             
-            related_node = Node(id=str(tgt_node_id), type=node_type, title=rec.get("title"))
+            related_node = Node(id=str(tgt_node_id), type=node_type, title=rec.get("title")) #type: ignore
             edge = Edge(
                 source_id=str(src_node_id),
                 target_id=str(tgt_node_id),
-                relation=rec.get("rel_type")
+                relation=rec.get("rel_type") #type: ignore
             )
             results.append((related_node, edge))
         return results

@@ -77,7 +77,7 @@ class MilvusSchemaManager:
             
             # Content
             FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535),
-            FieldSchema(name="title", dtype=DataType.VARCHAR, max_length=255),
+            FieldSchema(name="title", dtype=DataType.VARCHAR, max_length=1000),  # Increased from 255 to 1000
             
             # Vector embeddings
             FieldSchema(name="dense_vector", dtype=DataType.FLOAT_VECTOR, dim=self.dense_dim),
@@ -85,7 +85,7 @@ class MilvusSchemaManager:
             
             # Metadata
             FieldSchema(name="year", dtype=DataType.INT64),
-            FieldSchema(name="agency", dtype=DataType.VARCHAR, max_length=255),
+            FieldSchema(name="agency", dtype=DataType.VARCHAR, max_length=500),  # Increased from 255 to 500
             FieldSchema(name="status", dtype=DataType.VARCHAR, max_length=20),
             FieldSchema(name="effective_date", dtype=DataType.VARCHAR, max_length=20),  # ISO date string
             FieldSchema(name="source_url", dtype=DataType.VARCHAR, max_length=255),

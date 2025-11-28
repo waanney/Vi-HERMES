@@ -72,87 +72,47 @@ async def test_parser_to_milvus_flow():
 
     # Get project root
     project_root = Path(__file__).parent.parent
-    data_dir = project_root / "data" / "export_1"
+    data_dir = project_root / "data" / "data_txt_clean 2" / "data_txt_clean"
 
-    # Test files from export_1 folder - 5 files
-    test_files = [
-        {
-            "file": "649_QĐ-UBND.txt",
-            "doc_id": "649/QĐ-UBND",  # Fallback if metadata not found
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="649/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân tỉnh Kon Tum",
-                effect_date="2024-10-10",
-                field="Tài chính",
-                status="effective",
-            ),
-        },
-        {
-            "file": "74_2024_QĐ-UBND_1.txt",
-            "doc_id": "74/2024/QĐ-UBND",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="74/2024/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân Thành phố Hồ Chí Minh",
-                effect_date="2024-10-12",
-                field="Tổ chức cán bộ",
-                status="effective",
-            ),
-        },
-        {
-            "file": "66_2024_QĐ-UBND.txt",
-            "doc_id": "66/2024/QĐ-UBND",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="66/2024/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân",
-                effect_date="2024-01-01",
-                field="Hành chính",
-                status="effective",
-            ),
-        },
-        {
-            "file": "16_2024_QĐ-TTg.txt",
-            "doc_id": "16/2024/QĐ-TTg",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="16/2024/QĐ-TTg",
-                issuing_authority="Thủ tướng Chính phủ",
-                effect_date="2024-01-01",
-                field="Hành chính",
-                status="effective",
-            ),
-        },
-        {
-            "file": "42_2024_QĐ-UBND_1.txt",
-            "doc_id": "42/2024/QĐ-UBND",
-            "doc_type": "Decision",
-            "metadata": DocumentMetadata(
-                document_id="42/2024/QĐ-UBND",
-                issuing_authority="Ủy ban nhân dân",
-                effect_date="2024-01-01",
-                field="Hành chính",
-                status="effective",
-            ),
-        },
-    ]
+    # Get all .txt files from the new data directory
+    print(f"📁 Scanning data directory: {data_dir}")
+    all_txt_files = sorted(list(data_dir.glob("*.txt")))  # Sort for consistent processing
+    print(f"📊 Found {len(all_txt_files)} .txt files")
+    
+    # Process ALL files
+    test_files = []
+    for file_path in all_txt_files:
+        test_files.append({
+            "file": file_path.name,
+            "file_path": file_path,  # Full path
+            "doc_id": None,  # Will be extracted from metadata
+            "doc_type": None,  # Will be extracted from metadata
+            "metadata": None,  # Will be extracted from file
+        })
+    
+    print(f"📝 Processing ALL {len(test_files)} files\n")
 
     all_inserted_records = 0
+    successful_files = 0
+    failed_files = 0
 
-    for test_case in test_files:
+    total_files = len(test_files)
+    print(f"🚀 Starting to process {total_files} files...\n")
+
+    for idx, test_case in enumerate(test_files, 1):
         filename = test_case["file"]
-        default_doc_id = test_case["doc_id"]
-        default_doc_type = test_case["doc_type"]
-        provided_metadata = test_case["metadata"]
-        file_path = data_dir / filename
+        # Use full path if provided, otherwise construct from data_dir
+        file_path = test_case.get("file_path") or (data_dir / filename)
+        default_doc_id = test_case.get("doc_id")
+        default_doc_type = test_case.get("doc_type")
+        provided_metadata = test_case.get("metadata")
 
         if not file_path.exists():
             print(f"❌ File not found: {file_path}")
             continue
 
         print(f"\n{'─' * 70}")
-        print(f"📄 Processing: {filename}")
+        print(f"📄 [{idx}/{total_files}] Processing: {filename}")
         print(f"📁 File path: {file_path}")
         print(f"{'─' * 70}\n")
 
@@ -183,18 +143,31 @@ async def test_parser_to_milvus_flow():
                 # Infer doc_type from doc_id
                 doc_type = parser._infer_doc_type(doc_id) if doc_id else default_doc_type
 
-                # Fill missing fields from provided metadata
-                if not metadata.issuing_authority and provided_metadata.issuing_authority:
-                    metadata.issuing_authority = provided_metadata.issuing_authority
-                if not metadata.effect_date and provided_metadata.effect_date:
-                    metadata.effect_date = provided_metadata.effect_date
-                if not metadata.field and provided_metadata.field:
-                    metadata.field = provided_metadata.field
-                if not metadata.status and provided_metadata.status:
-                    metadata.status = provided_metadata.status
+                # Fill missing fields from provided metadata (if available)
+                if provided_metadata:
+                    if not metadata.issuing_authority and provided_metadata.issuing_authority:
+                        metadata.issuing_authority = provided_metadata.issuing_authority
+                    if not metadata.effect_date and provided_metadata.effect_date:
+                        metadata.effect_date = provided_metadata.effect_date
+                    if not metadata.field and provided_metadata.field:
+                        metadata.field = provided_metadata.field
+                    if not metadata.status and provided_metadata.status:
+                        metadata.status = provided_metadata.status
             else:
-                print("⚠️  No metadata found in file, using provided metadata")
-                metadata = provided_metadata
+                print("⚠️  No metadata found in file")
+                if provided_metadata:
+                    print("   Using provided metadata")
+                    metadata = provided_metadata
+                else:
+                    print("   Creating default metadata")
+                    from uraxlaw.preprocess.models import DocumentMetadata
+                    metadata = DocumentMetadata(
+                        document_id=default_doc_id,
+                        issuing_authority=None,
+                        effect_date=None,
+                        field=None,
+                        status="effective",
+                    )
                 doc_id = default_doc_id
                 doc_type = default_doc_type
 
@@ -202,13 +175,26 @@ async def test_parser_to_milvus_flow():
 
             # Step 5: Chunk document for Milvus
             print("🔗 Step 5: Chunking document for Milvus...")
-            milvus_data = await milvus_chunker.chunk_for_milvus(
-                text=text,
-                doc_id=doc_id,
-                doc_type=doc_type,
-                metadata=metadata,
-            )
-            print(f"✅ Generated {len(milvus_data)} Milvus records")
+            try:
+                # Add timeout for chunking (5 minutes per file)
+                milvus_data = await asyncio.wait_for(
+                    milvus_chunker.chunk_for_milvus(
+                        text=text,
+                        doc_id=doc_id,
+                        doc_type=doc_type,
+                        metadata=metadata,
+                    ),
+                    timeout=300.0  # 5 minutes timeout
+                )
+                print(f"✅ Generated {len(milvus_data)} Milvus records")
+            except asyncio.TimeoutError:
+                print(f"⏱️  Timeout: Chunking took too long for {filename}, skipping...")
+                failed_files += 1
+                continue
+            except Exception as e:
+                print(f"❌ Chunking error for {filename}: {e}")
+                failed_files += 1
+                continue
 
             # Display statistics
             records_with_dense = sum(1 for r in milvus_data if r.get("dense_vector") and len(r.get("dense_vector", [])) > 0)
@@ -244,6 +230,7 @@ async def test_parser_to_milvus_flow():
             milvus_manager.flush()
             print(f"✅ Inserted {len(milvus_data)} records into Milvus")
             all_inserted_records += len(milvus_data)
+            successful_files += 1
 
             # Step 7: Query and verify
             print("🔍 Step 7: Querying and verifying data...")
@@ -257,36 +244,48 @@ async def test_parser_to_milvus_flow():
 
             # Query by doc_id
             try:
-                query_result = milvus_manager.client.query(
-                    collection_name=settings.milvus_collection,
-                    filter=f'doc_id == "{doc_id}"',
-                    limit=5,
-                    output_fields=["article_id", "doc_id", "article_number", "title", "text"],
-                )
-
-                if query_result:
-                    print(f"✅ Found {len(query_result)} records for doc_id: {doc_id}")
-                    print("\n📋 Sample query results:")
-                    for i, record in enumerate(query_result[:3], 1):
-                        print(f"   Result {i}:")
-                        print(f"     - article_id: {record.get('article_id')}")
-                        print(f"     - article_number: {record.get('article_number')}")
-                        print(f"     - title: {record.get('title', '')[:50]}..." if record.get('title') else "     - title: (empty)")
+                if not milvus_manager.client:
+                    print("⚠️  Milvus client not available")
                 else:
-                    print(f"⚠️  No records found for doc_id: {doc_id}")
+                    query_result = milvus_manager.client.query(
+                        collection_name=settings.milvus_collection,
+                        filter=f'doc_id == "{doc_id}"',
+                        limit=5,
+                        output_fields=["article_id", "doc_id", "article_number", "title", "text"],
+                    )
+
+                    if query_result:
+                        print(f"✅ Found {len(query_result)} records for doc_id: {doc_id}")
+                        print("\n📋 Sample query results:")
+                        for i, record in enumerate(query_result[:3], 1):
+                            print(f"   Result {i}:")
+                            print(f"     - article_id: {record.get('article_id')}")
+                            print(f"     - article_number: {record.get('article_number')}")
+                            print(f"     - title: {record.get('title', '')[:50]}..." if record.get('title') else "     - title: (empty)")
+                    else:
+                        print(f"⚠️  No records found for doc_id: {doc_id}")
             except Exception as e:
                 print(f"⚠️  Query error: {e}")
 
             # Test search
-            if milvus_data and len(milvus_data) > 0:
+            if milvus_data and len(milvus_data) > 0 and milvus_manager.client:
                 try:
                     # Use first record's text for search test
                     test_text = milvus_data[0]["text"][:200]  # First 200 chars
                     test_embedding = embedder(test_text)
-
-                    # Use MilvusSchemaManager's search method
+                    
+                    # Generate sparse vector (simple TF-IDF-like approach)
+                    from sklearn.feature_extraction.text import TfidfVectorizer
+                    import numpy as np
+                    
+                    # Build sparse vector for query
+                    # For simplicity, use a basic approach
+                    sparse_query = {}  # Would need proper sparse vector generation
+                    
+                    # Use MilvusSchemaManager's search method with proper parameters
                     search_results = milvus_manager.search(
-                        query_text=test_text,
+                        dense_query_vector=test_embedding,
+                        sparse_query_vector=sparse_query,
                         limit=5,
                     )
 
@@ -294,17 +293,27 @@ async def test_parser_to_milvus_flow():
                         print(f"\n✅ Search test successful (found {len(search_results)} results)")
                         print("📋 Top search results:")
                         for i, result in enumerate(search_results[:3], 1):
-                            print(f"   {i}. article_id: {result.chunk.article_id}, score: {result.score:.4f}")
-                            print(f"      title: {result.chunk.title[:50]}..." if result.chunk.title else "      title: (empty)")
+                            # Search results from MilvusSchemaManager.search are dicts
+                            if isinstance(result, dict):
+                                article_id = result.get('article_id', 'N/A')
+                                score = result.get('score', 0.0)
+                                title = result.get('title', '')
+                                print(f"   {i}. article_id: {article_id}, score: {score:.4f}")
+                                print(f"      title: {title[:50]}..." if title else "      title: (empty)")
+                            else:
+                                print(f"   {i}. Result: {result}")
                     else:
                         print("⚠️  Search test returned no results")
                 except Exception as e:
                     print(f"⚠️  Search error: {e}")
+                    import traceback
+                    traceback.print_exc()
 
             print()
 
         except Exception as e:
             print(f"❌ Error processing {filename}: {e}")
+            failed_files += 1
             import traceback
 
             traceback.print_exc()
@@ -314,34 +323,40 @@ async def test_parser_to_milvus_flow():
     print(f"\n{'=' * 70}")
     print("📊 Final Summary")
     print(f"{'=' * 70}")
-    print(f"Total records inserted: {all_inserted_records}")
+    print(f"✅ Successfully processed: {successful_files}/{total_files} files")
+    print(f"❌ Failed: {failed_files}/{total_files} files")
+    print(f"📊 Total records inserted: {all_inserted_records}")
     print()
 
     # Database statistics
     print("🔍 Database Statistics:")
     try:
-        # Count by doc_id - query all records
-        all_docs = milvus_manager.client.query(
-            collection_name=settings.milvus_collection,
-            filter="",
-            output_fields=["doc_id"],
-            limit=10000,  # Adjust limit as needed
-        )
-        if all_docs:
-            total_count = len(all_docs)
-            print(f"   - Total records queried: {total_count}")
-            
-            doc_counts = {}
-            for doc in all_docs:
-                doc_id = doc.get("doc_id")
-                if doc_id:
-                    doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
-
-            print(f"\n   Records by document:")
-            for doc_id, count in sorted(doc_counts.items()):
-                print(f"     - {doc_id}: {count} records")
+        if not milvus_manager.client:
+            print("⚠️  Milvus client not available")
         else:
-            print("   - No records found in collection")
+            # Count by doc_id - query all records
+            all_docs = milvus_manager.client.query(
+                collection_name=settings.milvus_collection,
+                filter="",
+                output_fields=["doc_id"],
+                limit=10000,  # Adjust limit as needed
+            )
+            
+            if all_docs:
+                total_count = len(all_docs)
+                print(f"   - Total records queried: {total_count}")
+                
+                doc_counts = {}
+                for doc in all_docs:
+                    doc_id = doc.get("doc_id")
+                    if doc_id:
+                        doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
+
+                print(f"\n   Records by document:")
+                for doc_id, count in sorted(doc_counts.items()):
+                    print(f"     - {doc_id}: {count} records")
+            else:
+                print("   - No records found in collection")
 
     except Exception as e:
         print(f"⚠️  Could not query database statistics: {e}")

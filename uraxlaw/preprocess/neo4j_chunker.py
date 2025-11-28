@@ -181,7 +181,7 @@ class Neo4jChunker:
                 if isinstance(metadata.effect_date, str):
                     doc_props["effective_date"] = metadata.effect_date
                     try:
-                        doc_props["year"] = int(metadata.effect_date.split("-")[0])
+                        doc_props["year"] = int(metadata.effect_date.split("-")[0]) #type: ignore
                     except:
                         pass
                 else:
