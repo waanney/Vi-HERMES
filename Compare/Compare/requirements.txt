@@ -1,0 +1,9 @@
+google-generativeai
+openai
+python-dotenv
+pandas
+numpy
+scikit-learn
+chromadb
+lightrag-hku
+# Lưu ý: HippoRAG cần cài riêng theo repo của họ
