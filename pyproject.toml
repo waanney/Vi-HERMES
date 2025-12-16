@@ -34,6 +34,8 @@ dependencies = [
     "pymilvus>=2.6.3",
     "python-docx>=1.1.0",
     "typing-extensions==4.12.2",
+    "google-generativeai>=0.8.5",
+    "tiktoken>=0.12.0",
 ]
 
 

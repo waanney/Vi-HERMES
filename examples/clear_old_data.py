@@ -48,13 +48,27 @@ def clear_milvus_data():
         milvus_uri=f"http://{settings.milvus_host}:{settings.milvus_port}",
     )
     
-    if not milvus_manager.connect():
-        print("❌ Cannot connect to Milvus. Aborting.")
-        return
+    # Retry connection with exponential backoff
+    import time
+    max_retries = 10
+    retry_delay = 5  # seconds
+    
+    for attempt in range(max_retries):
+        if milvus_manager.connect():
+            break
+        if attempt < max_retries - 1:
+            print(f"⏳ Milvus not ready yet. Waiting {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
+            time.sleep(retry_delay)
+        else:
+            print("❌ Cannot connect to Milvus after multiple attempts. Aborting.")
+            return
     
     # Recreate collection (this deletes all data)
     milvus_manager.recreate_collection()
     print("✅ Milvus collection recreated (all data cleared)")
+    
+    # Close connection
+    milvus_manager.close()
 
 
 def main():

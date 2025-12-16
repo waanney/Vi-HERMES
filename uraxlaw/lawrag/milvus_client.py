@@ -449,6 +449,7 @@ class MilvusClient:
                     chunk_id = entity.get("article_id") if isinstance(entity, dict) else h.get("article_id")
                     doc_id = entity.get("doc_id", "") if isinstance(entity, dict) else ""
                     text = entity.get("text", "") if isinstance(entity, dict) else ""
+                    title = entity.get("title", "") if isinstance(entity, dict) else h.get("title", "")
                     distance = h["distance"] if "distance" in h else h.get("distance")
                 except (KeyError, TypeError):
                     # Fallback: attribute access
@@ -457,10 +458,12 @@ class MilvusClient:
                         chunk_id = entity.get("article_id")
                         doc_id = entity.get("doc_id", "")
                         text = entity.get("text", "")
+                        title = entity.get("title", "")
                     else:
                         chunk_id = getattr(entity, "article_id", None) or getattr(h, "article_id", None)
                         doc_id = getattr(entity, "doc_id", "") or getattr(h, "doc_id", "")
                         text = getattr(entity, "text", "") or getattr(h, "text", "")
+                        title = getattr(entity, "title", "") or getattr(h, "title", "")
                     distance = getattr(h, "distance", None)
                 
                 if chunk_id and text:
@@ -475,7 +478,12 @@ class MilvusClient:
                         score = 1.0 - float(distance) if distance <= 1.0 else 1.0 / (1.0 + float(distance))
                     else:
                         score = 0.0
-                    out.append(SimpleNamespace(chunk=chunk, score=float(score)))
+                    result_obj = SimpleNamespace(chunk=chunk, score=float(score))
+                    # Store title in result object for later access
+                    result_obj.title = str(title) if title else ""
+                    # Also store raw hit for debugging
+                    result_obj.raw_hit = h
+                    out.append(result_obj)
             except Exception:
                 continue
         

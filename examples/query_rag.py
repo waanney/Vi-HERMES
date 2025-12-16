@@ -107,12 +107,13 @@ def query_milvus(milvus_client: MilvusClient, query: str, top_k: int = 5) -> Lis
                 neo4j_article_id_parts.append(str(clause_number))
             neo4j_article_id = ":".join(neo4j_article_id_parts)
         
-        # Get title if available
-        title = getattr(chunk, "title", "") or ""
+        # Get title from result object (stored in MilvusClient.search)
+        title = getattr(result, "title", "") or ""
         
         kb_results.append({
             "source": "KB",  # Knowledge Base (Milvus)
             "article_id": neo4j_article_id,  # Use this to query Neo4j
+            "article_id_original": article_id,  # Original article_id from chunk.id (format: doc_id:row_id, e.g., "1/QĐ-XPHC:5962-3912-9440")
             "doc_id": doc_id,
             "text": chunk.text,
             "title": title,
