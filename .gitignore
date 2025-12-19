@@ -31,7 +31,6 @@ UraxLaw.egg-info/
 data/
 logs/
 *.log
-*.csv
 
 # --- Temporary files ---
 *.bak
