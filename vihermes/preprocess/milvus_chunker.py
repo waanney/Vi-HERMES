@@ -3,8 +3,8 @@ from __future__ import annotations
 import time
 from typing import Callable, Dict, List, Optional
 
-from uraxlaw.preprocess.agent_chunker import AgentChunker
-from uraxlaw.preprocess.models import DocumentMetadata
+from vihermes.preprocess.agent_chunker import AgentChunker
+from vihermes.preprocess.models import DocumentMetadata
 
 
 class MilvusChunker:

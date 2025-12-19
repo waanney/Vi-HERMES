@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 
-from uraxlaw.config.settings import get_settings
-from uraxlaw.Agents.engine import GraphRAGEngine, LLMClient
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient  # type: ignore
-from uraxlaw.lawrag.milvus_client import MilvusClient  # type: ignore
-from uraxlaw.lawrag.hybrid import HybridRetriever
+from vihermes.config.settings import get_settings
+from vihermes.Agents.engine import GraphRAGEngine, LLMClient
+from vihermes.lawgraph.neo4j_client import Neo4jClient  # type: ignore
+from vihermes.lawrag.milvus_client import MilvusClient  # type: ignore
+from vihermes.lawrag.hybrid import HybridRetriever
 
 
 def main() -> None:

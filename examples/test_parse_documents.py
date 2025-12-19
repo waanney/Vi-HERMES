@@ -7,15 +7,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from uraxlaw.Agents.engine import GraphRAGEngine, LLMClient
-from uraxlaw.config.settings import get_settings
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
-from uraxlaw.lawrag.hybrid import HybridRetriever
-from uraxlaw.lawrag.milvus_client import MilvusClient, MilvusSchemaManager
-from uraxlaw.preprocess.agent_chunker import AgentChunker
-from uraxlaw.preprocess.models import DocumentMetadata
-from uraxlaw.preprocess.parser import DocumentParser
-from uraxlaw.preprocess.pipeline import PreprocessPipeline
+from vihermes.Agents.engine import GraphRAGEngine, LLMClient
+from vihermes.config.settings import get_settings
+from vihermes.lawgraph.neo4j_client import Neo4jClient
+from vihermes.lawrag.hybrid import HybridRetriever
+from vihermes.lawrag.milvus_client import MilvusClient, MilvusSchemaManager
+from vihermes.preprocess.agent_chunker import AgentChunker
+from vihermes.preprocess.models import DocumentMetadata
+from vihermes.preprocess.parser import DocumentParser
+from vihermes.preprocess.pipeline import PreprocessPipeline
 
 load_dotenv()
 
@@ -152,7 +152,7 @@ async def test_parse_store_and_query():
             print(f"   ✅ Stored document node vào Neo4j")
 
             # Extract và store relations
-            from uraxlaw.Agents.relations import extract_all
+            from vihermes.Agents.relations import extract_all
             relations = extract_all(source_id=doc_id, text=text)
             for rel in relations:
                 neo4j.upsert_edge(

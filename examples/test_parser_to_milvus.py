@@ -15,11 +15,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from uraxlaw.config.settings import get_settings
-from uraxlaw.lawrag.milvus_client import MilvusSchemaManager
-from uraxlaw.preprocess.milvus_chunker import MilvusChunker
-from uraxlaw.preprocess.parser import DocumentParser
-from uraxlaw.preprocess.models import DocumentMetadata
+from vihermes.config.settings import get_settings
+from vihermes.lawrag.milvus_client import MilvusSchemaManager
+from vihermes.preprocess.milvus_chunker import MilvusChunker
+from vihermes.preprocess.parser import DocumentParser
+from vihermes.preprocess.models import DocumentMetadata
 
 load_dotenv()
 
@@ -160,7 +160,7 @@ async def test_parser_to_milvus_flow():
                     metadata = provided_metadata
                 else:
                     print("   Creating default metadata")
-                    from uraxlaw.preprocess.models import DocumentMetadata
+                    from vihermes.preprocess.models import DocumentMetadata
                     metadata = DocumentMetadata(
                         document_id=default_doc_id,
                         issuing_authority=None,

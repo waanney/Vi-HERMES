@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from uraxlaw.config.settings import get_settings
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
-from uraxlaw.lawrag.milvus_client import MilvusSchemaManager
-from uraxlaw.preprocess.agent_chunker import AgentChunker
-from uraxlaw.preprocess.parser import DocumentParser
-from uraxlaw.preprocess.pipeline import PreprocessPipeline
+from vihermes.config.settings import get_settings
+from vihermes.lawgraph.neo4j_client import Neo4jClient
+from vihermes.lawrag.milvus_client import MilvusSchemaManager
+from vihermes.preprocess.agent_chunker import AgentChunker
+from vihermes.preprocess.parser import DocumentParser
+from vihermes.preprocess.pipeline import PreprocessPipeline
 
 
 # Sample legal text for testing
@@ -135,7 +135,7 @@ async def test_full_pipeline():
         print(f"  - {chunk.id}: {chunk.text[:80]}...")
     
     # Process document (store in Milvus & Neo4j)
-    from uraxlaw.preprocess.models import DocumentMetadata
+    from vihermes.preprocess.models import DocumentMetadata
     
     metadata = DocumentMetadata(
         document_id="law_38_2019",

@@ -20,9 +20,9 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from uraxlaw.config.settings import get_settings
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
-from uraxlaw.lawrag.milvus_client import MilvusSchemaManager
+from vihermes.config.settings import get_settings
+from vihermes.lawgraph.neo4j_client import Neo4jClient
+from vihermes.lawrag.milvus_client import MilvusSchemaManager
 
 load_dotenv()
 

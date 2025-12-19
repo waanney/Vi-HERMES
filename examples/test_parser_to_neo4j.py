@@ -15,11 +15,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from uraxlaw.config.settings import get_settings
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
-from uraxlaw.preprocess.neo4j_chunker import Neo4jChunker
-from uraxlaw.preprocess.parser import DocumentParser
-from uraxlaw.preprocess.models import DocumentMetadata
+from vihermes.config.settings import get_settings
+from vihermes.lawgraph.neo4j_client import Neo4jClient
+from vihermes.preprocess.neo4j_chunker import Neo4jChunker
+from vihermes.preprocess.parser import DocumentParser
+from vihermes.preprocess.models import DocumentMetadata
 
 load_dotenv()
 
@@ -140,7 +140,7 @@ async def test_parser_to_neo4j_flow():
                     metadata = provided_metadata
                 else:
                     print("   Creating default metadata")
-                    from uraxlaw.preprocess.models import DocumentMetadata
+                    from vihermes.preprocess.models import DocumentMetadata
                     metadata = DocumentMetadata(
                         document_id=default_doc_id,
                         issuing_authority=None,

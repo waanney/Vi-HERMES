@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Callable, List, Optional
 
-from uraxlaw.lawgraph.models import Edge, Node
-from uraxlaw.lawrag.models import Chunk
-from uraxlaw.preprocess.models import DocumentMetadata
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
-from uraxlaw.lawrag.milvus_client import MilvusClient, MilvusSchemaManager
-from uraxlaw.preprocess.ingestion import DocumentIngestion
+from vihermes.lawgraph.models import Edge, Node
+from vihermes.lawrag.models import Chunk
+from vihermes.preprocess.models import DocumentMetadata
+from vihermes.lawgraph.neo4j_client import Neo4jClient
+from vihermes.lawrag.milvus_client import MilvusClient, MilvusSchemaManager
+from vihermes.preprocess.ingestion import DocumentIngestion
 
 
 class PreprocessPipeline:

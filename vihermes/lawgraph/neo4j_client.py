@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from neo4j import GraphDatabase
 
-from uraxlaw.lawgraph.models import Edge, Node
+from vihermes.lawgraph.models import Edge, Node
 
 
 # Node labels

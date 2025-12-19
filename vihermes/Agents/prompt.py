@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from uraxlaw.lawrag.models import RetrievalResult
+from vihermes.lawrag.models import RetrievalResult
 
 
 VI_PROMPT_TEMPLATE = (

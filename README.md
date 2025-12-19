@@ -43,7 +43,7 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=password123
 MILVUS_HOST=localhost
 MILVUS_PORT=19530
-MILVUS_COLLECTION=uraxlaw_articles
+MILVUS_COLLECTION=vihermes_articles
 OPENAI_API_KEY=your_openai_api_key_here
 LLM_MODEL=gpt-4o
 ```
@@ -79,31 +79,31 @@ docker-compose down
 - `uv.lock` - Dependency lock file
 - `.env` - Environment variables (create this file)
 
-### uraxlaw/
+### vihermes/
 
 Main package containing the core modules:
 
-#### uraxlaw/Agents/
+#### vihermes/Agents/
 - `engine.py` - GraphRAGEngine for query processing and answer generation
 - `models.py` - Data models for agents
 - `prompt.py` - Prompt building utilities
 - `relations.py` - Relation extraction logic
 - `segmentation.py` - Document segmentation
 
-#### uraxlaw/config/
+#### vihermes/config/
 - `settings.py` - Configuration settings loaded from environment variables
 
-#### uraxlaw/lawgraph/
+#### vihermes/lawgraph/
 - `models.py` - Graph data models (Node, Edge)
 - `neo4j_client.py` - Neo4j client wrapper
 - `traversal.py` - Graph traversal algorithms
 
-#### uraxlaw/lawrag/
+#### vihermes/lawrag/
 - `hybrid.py` - Hybrid retriever combining vector and graph search
 - `milvus_client.py` - Milvus client wrapper
 - `models.py` - RAG data models
 
-#### uraxlaw/preprocess/
+#### vihermes/preprocess/
 - `agent_chunker.py` - Agent-based document chunking
 - `ingestion.py` - Document ingestion pipeline
 - `milvus_chunker.py` - Chunking for Milvus storage
@@ -208,7 +208,7 @@ python examples/evaluate_rag_on_viquad.py
 
 ## Configuration
 
-Configuration is managed through environment variables (via `.env` file) and the `Settings` class in `uraxlaw/config/settings.py`. The following settings are available:
+Configuration is managed through environment variables (via `.env` file) and the `Settings` class in `vihermes/config/settings.py`. The following settings are available:
 
 - Neo4j connection settings
 - Milvus connection settings

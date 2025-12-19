@@ -5,9 +5,9 @@ from typing import List
 
 from pydantic import BaseModel
 
-from uraxlaw.Agents.models import AnswerResponse
-from uraxlaw.lawrag.models import RetrievalResult
-from uraxlaw.Agents.prompt import build_prompt
+from vihermes.Agents.models import AnswerResponse
+from vihermes.lawrag.models import RetrievalResult
+from vihermes.Agents.prompt import build_prompt
 
 
 class LLMClient(BaseModel):

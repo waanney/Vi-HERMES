@@ -4,7 +4,7 @@ from typing import List, Optional, Sequence
 
 from pydantic import BaseModel
 
-from uraxlaw.lawgraph.models import Edge, Node
+from vihermes.lawgraph.models import Edge, Node
 
 
 class Chunk(BaseModel):

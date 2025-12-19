@@ -24,10 +24,10 @@ except (ImportError, ValueError, Exception):
 
 from dotenv import load_dotenv
 
-from uraxlaw.Agents.engine import LLMClient
-from uraxlaw.config.settings import get_settings
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
-from uraxlaw.lawrag.milvus_client import MilvusClient
+from vihermes.Agents.engine import LLMClient
+from vihermes.config.settings import get_settings
+from vihermes.lawgraph.neo4j_client import Neo4jClient
+from vihermes.lawrag.milvus_client import MilvusClient
 
 load_dotenv()
 

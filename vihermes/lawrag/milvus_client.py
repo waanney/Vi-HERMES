@@ -346,7 +346,7 @@ class MilvusClient:
     - search(query, top_k) returns a list of hits with .chunk and .score
     """
 
-    def __init__(self, host: str = "localhost", port: int = 19530, collection: str = "uraxlaw_articles", dense_dim: int = 768, embedder: Optional[Callable[[str], List[float]]] = None):
+    def __init__(self, host: str = "localhost", port: int = 19530, collection: str = "vihermes_articles", dense_dim: int = 768, embedder: Optional[Callable[[str], List[float]]] = None):
         self._uri = f"http://{host}:{port}"
         self._collection = collection
         self._dense_dim = dense_dim
@@ -438,7 +438,7 @@ class MilvusClient:
             print(f"Milvus search error: {e}")
             hits = []
 
-        from uraxlaw.lawrag.models import Chunk
+        from vihermes.lawrag.models import Chunk
 
         out = []
         for h in hits:

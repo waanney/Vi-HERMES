@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import List
 
-from uraxlaw.lawgraph.models import Edge
+from vihermes.lawgraph.models import Edge
 
 
 REF_RE = re.compile(r"(?i)(Nghị định|Luật|Thông tư)\s+([0-9]{1,4}/[0-9]{4})")

@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Optional, Tuple
 
-from uraxlaw.preprocess.models import DocumentMetadata
+from vihermes.preprocess.models import DocumentMetadata
 
 
 class DocumentParser:

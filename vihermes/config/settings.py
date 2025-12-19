@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # Milvus
     milvus_host: str = Field(default="localhost")
     milvus_port: int = Field(default=19530)
-    milvus_collection: str = Field(default="uraxlaw_articles")
+    milvus_collection: str = Field(default="vihermes_articles")
 
     # LLM
     llm_model: str = Field(default="gpt-4o")

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from uraxlaw.lawgraph.models import Edge, Node
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
+from vihermes.lawgraph.models import Edge, Node
+from vihermes.lawgraph.neo4j_client import Neo4jClient
 
 
 class GraphTraversal:

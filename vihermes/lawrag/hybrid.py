@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import List
 
-from uraxlaw.lawrag.models import RetrievalResult
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient
-from uraxlaw.lawrag.milvus_client import MilvusClient
+from vihermes.lawrag.models import RetrievalResult
+from vihermes.lawgraph.neo4j_client import Neo4jClient
+from vihermes.lawrag.milvus_client import MilvusClient
 
 
 class HybridRetriever:

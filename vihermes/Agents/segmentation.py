@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Iterable, List
 
-from uraxlaw.lawrag.models import Chunk
+from vihermes.lawrag.models import Chunk
 
 
 ARTICLE_RE = re.compile(r"(?i)\b(điều)\s+(\d+)")

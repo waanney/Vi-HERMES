@@ -22,8 +22,8 @@ except ImportError:
 
 from dotenv import load_dotenv
 
-from uraxlaw.config.settings import get_settings
-from uraxlaw.lawgraph.neo4j_client import Neo4jClient, NODE_LABELS, REL_TYPES
+from vihermes.config.settings import get_settings
+from vihermes.lawgraph.neo4j_client import Neo4jClient, NODE_LABELS, REL_TYPES
 
 load_dotenv()
 

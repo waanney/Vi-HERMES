@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from uraxlaw.lawrag.models import Chunk
-from uraxlaw.preprocess.agent_chunker import AgentChunker
-from uraxlaw.preprocess.models import DocumentMetadata
-from uraxlaw.Agents.relations import extract_all
+from vihermes.lawrag.models import Chunk
+from vihermes.preprocess.agent_chunker import AgentChunker
+from vihermes.preprocess.models import DocumentMetadata
+from vihermes.Agents.relations import extract_all
 
 
 class DocumentIngestion:

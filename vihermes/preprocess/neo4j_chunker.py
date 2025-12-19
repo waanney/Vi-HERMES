@@ -3,9 +3,9 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Tuple
 
-from uraxlaw.lawgraph.models import Edge, Node
-from uraxlaw.preprocess.agent_chunker import AgentChunker
-from uraxlaw.preprocess.models import DocumentMetadata
+from vihermes.lawgraph.models import Edge, Node
+from vihermes.preprocess.agent_chunker import AgentChunker
+from vihermes.preprocess.models import DocumentMetadata
 
 
 # Regex patterns for extracting relationships
